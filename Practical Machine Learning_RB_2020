@@ -1,0 +1,77 @@
+##Script   Rosa Boone 06/08/2020 
+##Source:  http://groupware.les.inf.puc-rio.br/har
+
+
+#initialisation for libraries 
+library(caret)
+
+library(knitr)
+library(corrplot)
+library(plotly)
+library(dplyr)
+library(ggplot2)
+library(DT)
+library(correlationfunnel)
+library(GGally)
+install.packages("e1071")
+library(e1071)
+install.packages("rpart")
+library(rpart)
+install.packages("rpart.plot")
+library(rpart.plot)
+###initialisation for data 
+#downloading data 
+
+training   <- read.csv("pml-training.csv", stringsAsFactors = F,na.strings = c("","NA"))
+testing <- read.csv("pml-testing.csv", stringsAsFactors = F,na.strings = c("","NA"))
+
+
+
+## creating parition for training data into training set and cross validation 
+inTrainIndex <- createDataPartition(training_cln$classe, p=0.75)[[1]]
+training_training_data <- training_cln[inTrainIndex,]
+training_crossval_data <- training_cln[-inTrainIndex,]
+
+
+
+
+Train <- read.csv("pml-training.csv", stringsAsFactors = F,na.strings = c("","NA"))
+Test <- read.csv("pml-testing.csv", stringsAsFactors = F,na.strings = c("","NA"))
+dim(Train); dim(Test)
+
+set.seed(101)
+inTrain <- createDataPartition(Train$classe, p = 0.8, list = F)
+
+###Cleaning data 
+##removing obs with more than 95% NA
+ColumnIndexclean <- colSums(is.na(Train))/nrow(Train) < 0.95
+Train_cln <- Train[,ColumnIndexclean]
+
+## removing irrelevant columns (1 to 7)
+Train_cln <- Train_cln[,-c(1:7)]
+Test_cln <- Test[,-c(1:7)]
+
+##creating training and validation data set with clean data 
+Cross_Val <- Train_cln[-inTrain,]
+Train_Set <- Train_cln[inTrain,]
+
+##changing test data into same name 
+allNames <- names(Train_cln)
+Test_cln <- Test[,allNames[1:52]]
+
+
+## Analysis 
+decisionTreeMod <- train(classe ~., method='rpart', data=Train_Set)
+
+decisionTreePrediction <- predict(decisionTreeMod, Cross_Val)
+confusionMatrix(Cross_Val$classe, decisionTreePrediction)
+rpart.plot(decisionTreeMod$finalModel)
+
+##Random Forest 
+rfMod <- train(classe ~., method='rf', data=Train_Set, ntree=128)
+rfPrediction <- predict(rfMod, Cross_Val)
+confusionMatrix(Cross_Val$classe, rfPrediction)
+
+## Prediction 
+predict(rfMod, Test_cln)
+
